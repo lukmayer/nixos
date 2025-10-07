@@ -48,42 +48,40 @@ in
     LC_TIME = "en_US.UTF-8";
   };
 
-  hardware.bluetooth = {
-    enable        = true;   # loads the kernel modules + bluetoothd
-    powerOnBoot   = true;   # turn the adapter on automatically
+services.xserver = {
+  xkb.layout = "de,us";
+  xkb.variant = "";
+  xkb.options = "grp:win_space_toggle";
+};
+
+
+# SERVICES
+services = {
+  xserver.enable = true;
+  printing.enable = true;
+  openssh.enable = true;
+
+  # KDE
+  desktopManager.plasma6.enable = true;
+
+  displayManager.sddm = {
+    enable = true;
+      wayland.enable = true;
+    theme = "catppuccin-mocha";
+    #package = pkgs.kdePackages.sddm; #needs to be commented out to work
   };
-  services.blueman.enable   = true;
+};
 
-  services.xserver = {
-    xkb.layout = "de,us";
-    xkb.variant = "";
-    xkb.options = "grp:win_space_toggle";
-  };
 
-  # Garbace collection
-  nix.gc = {
-    automatic = true;          # create nix-gc.service + timer
-    dates     = "03:30 daily"; # run each night (cron-style syntax)
-    options   = "--delete-older-than 14d";
-  };
 
-  # SERVICES
-  services = {
-    xserver.enable = true;
-    printing.enable = true;
-    openssh.enable = true;
-
-    xserver.wacom.enable = true;
-    xserver.displayManager.gdm.enable = true;
-    xserver.desktopManager.gnome.enable = true;
-    gnome.core-apps.enable = true;
-    gnome.core-developer-tools.enable = true;
-    gnome.games.enable = false;
-
-  };
-
-  #GNOME
-  environment.gnome.excludePackages = with pkgs; [ gnome-tour gnome-user-docs ];
+environment.plasma6.excludePackages = with pkgs; [
+    kdePackages.kdepim-runtime # Akonadi agents and resources
+    kdePackages.kmahjongg # KMahjongg is a tile matching game for one or two players
+    kdePackages.kmines # KMines is the classic Minesweeper game
+    kdePackages.kpat # KPatience offers a selection of solitaire card games
+    kdePackages.ksudoku # KSudoku is a logic-based symbol placement puzzle
+    kdePackages.ktorrent # Powerful BitTorrent client
+  ];
 
   # Console keymap
   console.keyMap = "de";
@@ -110,31 +108,31 @@ in
     ];
   };
 
+  # Firefox.
+  programs.firefox.enable = true;
+
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
 
   # PACKAGES
   environment.systemPackages = with pkgs; [
-    kitty
-    kdePackages.kate
-    
+
     # coding
     wget
-    vim
+    helix
     git # manual ssh configuration
     quarto
     typst
     zellij # manual setup
     vscodium
 
-    # emacs
     emacs
     cmake
     gnumake
     gcc
     libtool
     libvterm
-    
+
     (python3.withPackages (ps: with ps; [
       numpy
       pandas
@@ -145,7 +143,7 @@ in
 
     julia # manual package installation
 
-    (radianWrapper.override {
+    (rWrapper.override {
       packages = with rPackages; [
         tidyverse
         BayesFactor
@@ -180,22 +178,25 @@ in
     syncthing # manual setup
     deja-dup
 
+    # KDE
+    kdePackages.ksystemlog # KDE SystemLog Application
+    kdePackages.sddm-kcm # Configuration module for SDDM
+    kdiff3 # Compares and merges 2 or 3 files or directories
+    kdePackages.isoimagewriter # Program to write hybrid ISO files onto USB disks
     wayland-utils # Wayland utilities
     wl-clipboard # Command-line copy/paste utilities for Wayland
 
-    #GNOME
-    adwaita-icon-theme
-    libwacom
-    libinput
-    gnome-tweaks
-    gnomeExtensions.just-perfection
-    gnomeExtensions.caffeine
-    gnomeExtensions.tray-icons-reloaded
-    gnomeExtensions.blur-my-shell
+    kde-rounded-corners #for border colors
+
+    (catppuccin-sddm.override {
+      flavor = "mocha";
+      font  = "Noto Sans";
+      fontSize = "16";
+      background = "${./wallpaper.png}";
+      loginBackground = true;
+    })
 
   ];
-
-
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
