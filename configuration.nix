@@ -5,6 +5,18 @@
 let
   home-manager = builtins.fetchTarball https://github.com/nix-community/home-manager/archive/release-25.05.tar.gz;
 
+  # R packages
+  commonRPackages = with pkgs.rPackages; [
+    tidyverse BayesFactor brms lme4 lmerTest zoo readxl languageserver kableExtra emmeans rstatix
+    stringr DT this_path showtext cowplot patchwork reticulate pROC
+  ];
+
+  # R with those packages
+  myR = pkgs.rWrapper.override { packages = commonRPackages; };
+
+  # radian that starts the same R and pre-loads the same packages
+  myRadian = pkgs.radianWrapper.override { packages = commonRPackages; };
+
 in
 
 {
@@ -52,7 +64,7 @@ in
     enable        = true;   # loads the kernel modules + bluetoothd
     powerOnBoot   = true;   # turn the adapter on automatically
   };
-  services.blueman.enable   = true;
+  # services.blueman.enable   = true;
 
   services.xserver = {
     xkb.layout = "de,us";
@@ -76,8 +88,8 @@ in
     xserver.wacom.enable = true;
     xserver.displayManager.gdm.enable = true;
     xserver.desktopManager.gnome.enable = true;
-    gnome.core-apps.enable = true;
-    gnome.core-developer-tools.enable = true;
+    gnome.core-apps.enable = false;
+    gnome.core-developer-tools.enable = false;
     gnome.games.enable = false;
 
   };
@@ -103,6 +115,7 @@ in
   # Don't forget to set a password with ‘passwd’.
   users.users.lm = {
     isNormalUser = true;
+    shell = pkgs.fish;
     description = "Lm";
     extraGroups = [ "networkmanager" "wheel" ];
     packages = with pkgs; [
@@ -112,29 +125,64 @@ in
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
+  
+  # Nix-ld 
+  programs.nix-ld.enable = true;
 
+  # Fish
+  programs.fish.enable = true;
+
+  # Emacs
+  services.emacs = {
+    enable = true;
+  };
+  
   # PACKAGES
   environment.systemPackages = with pkgs; [
-    kitty
-    kdePackages.kate
+    
+    # CLI
+    kitty # terminal
+    zellij # multiplexer
+    helix # text editor
+    btop # system-monitor
+    ncdu # disk-usage
+
+    lazygit # git interface
+    fzf # fuzzy-find
+    fd # faster find
+    yazi # file-manager
+    ripgrep # better grep
+    zoxide # frecency commands
+    carapace # argument suggestions
     
     # coding
-    wget
-    vim
-    git # manual ssh configuration
-    quarto
-    typst
-    zellij # manual setup
-    vscodium
-
-    # emacs
-    emacs
-    cmake
-    gnumake
     gcc
-    libtool
-    libvterm
+    gnumake
+    nodejs
+    unzip
+    wget
+    curl
+    git 
+    typst
+    quarto
+    vscodium # manual setup
+
+    # latex
+    (texliveFull.withPackages
+      (ps: with ps; [
+        scheme-basic
+        standalone
+        varwidth
+        scontents
+        xcolor
+    ]))
+    #poppler_utils # not sure if needed
+    #ghostscript # not sure if needed
+    #imagemagick # not sure if needed
+    #pdf2svg # not sure if needed
+
     
+    # python
     (python3.withPackages (ps: with ps; [
       numpy
       pandas
@@ -143,60 +191,66 @@ in
       pygame
     ]))
 
-    julia # manual package installation
+    # julia
+    julia-bin # manual package installation
 
-    (radianWrapper.override {
-      packages = with rPackages; [
-        tidyverse
-        BayesFactor
-        brms
-        lme4
-        zoo
-        readxl
-        languageserver
-        stringr
-        DT
-        this_path
-      ];
-    })
+    # R
+    myR
+    myRadian
 
     # web
     vivaldi # manual configuration
-    brave
-    tor
     protonvpn-gui # manually add to start-up
     protonmail-bridge-gui # manually add to start-up
 
     # media
     mpv
     calibre
-    xournalpp
     zotero # manual extension installation
     libreoffice
     stremio
     pdfarranger
-
+    xournalpp   
+    evince
+ 
     # files
     syncthing # manual setup
     deja-dup
 
+    # wayland
     wayland-utils # Wayland utilities
     wl-clipboard # Command-line copy/paste utilities for Wayland
 
     #GNOME
+    gnome-system-monitor
+    nautilus
     adwaita-icon-theme
     libwacom
     libinput
+    gnome-themes-extra
     gnome-tweaks
     gnomeExtensions.just-perfection
     gnomeExtensions.caffeine
-    gnomeExtensions.tray-icons-reloaded
     gnomeExtensions.blur-my-shell
+    gnomeExtensions.astra-monitor
 
   ];
 
 
+  environment.variables = {
+    QUARTO_R = "${myR}/bin/R";
+    RETICULATE_PYTHON = "${pkgs.python3}/bin/python3";
 
+    EDITOR = "emacsclient -c -a ''";
+
+    # WIP - packages still not found during quarto render
+    QUARTO_JULIA = "${pkgs.julia-bin}/bin/julia";
+    QUARTO_JULIA_RUNTIME_DIR = "$HOME/.local/state/quarto-julia";
+  };
+  
+  environment.shellAliases = {
+    e = "emacsclient -c -a ''";
+  };
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
