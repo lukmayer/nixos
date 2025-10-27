@@ -17,6 +17,11 @@ let
   # radian that starts the same R and pre-loads the same packages
   myRadian = pkgs.radianWrapper.override { packages = commonRPackages; };
 
+  myEmacs =
+    (pkgs.emacsPackagesFor pkgs.emacs).emacsWithPackages (epkgs: [
+      epkgs.vterm
+    ]);
+
 in
 
 {
@@ -135,9 +140,10 @@ in
   # Emacs
   services.emacs = {
     enable = true;
+    package = myEmacs;
   };
   
-  # PACKAGES
+  
   environment.systemPackages = with pkgs; [
     
     # CLI
@@ -158,14 +164,20 @@ in
     # coding
     gcc
     gnumake
+    cmake
+    libtool
+    pkg-config
+    libvterm
     nodejs
     unzip
     wget
     curl
-    git 
+    git
+    
     typst
     quarto
     vscodium # manual setup
+    myEmacs
 
     # latex
     (texliveFull.withPackages
@@ -189,6 +201,7 @@ in
       matplotlib
       scipy
       pygame
+      ipython
     ]))
 
     # julia
@@ -205,6 +218,7 @@ in
 
     # media
     mpv
+    yt-dlp
     calibre
     zotero # manual extension installation
     libreoffice
@@ -249,7 +263,8 @@ in
   };
   
   environment.shellAliases = {
-    e = "emacsclient -c -a ''";
+    e = "emacsclient -nw ''";
+    em = "emacsclient -c -a ''";
   };
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
