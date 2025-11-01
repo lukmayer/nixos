@@ -1,6 +1,6 @@
 # configuration.nix(5) man page / NixOS manual (accessible by running ‘nixos-help’).
-
-{ config, pkgs, ... }:
+# TODO: reorganize for clarity
+{ config, pkgs, lib, ... }:
 
 let
   home-manager = builtins.fetchTarball https://github.com/nix-community/home-manager/archive/release-25.05.tar.gz;
@@ -11,10 +11,10 @@ let
     stringr DT this_path showtext cowplot patchwork reticulate pROC
   ];
 
-  # R with those packages
+  # R with packages
   myR = pkgs.rWrapper.override { packages = commonRPackages; };
 
-  # radian that starts the same R and pre-loads the same packages
+  # radian with the same packages
   myRadian = pkgs.radianWrapper.override { packages = commonRPackages; };
 
   myEmacs =
@@ -69,7 +69,6 @@ in
     enable        = true;   # loads the kernel modules + bluetoothd
     powerOnBoot   = true;   # turn the adapter on automatically
   };
-  # services.blueman.enable   = true;
 
   services.xserver = {
     xkb.layout = "de,us";
@@ -79,8 +78,8 @@ in
 
   # Garbace collection
   nix.gc = {
-    automatic = true;          # create nix-gc.service + timer
-    dates     = "03:30 daily"; # run each night (cron-style syntax)
+    automatic = true;          
+    dates     = "03:30 daily"; 
     options   = "--delete-older-than 14d";
   };
 
@@ -89,18 +88,32 @@ in
     xserver.enable = true;
     printing.enable = true;
     openssh.enable = true;
-
     xserver.wacom.enable = true;
+
+    # DM
     xserver.displayManager.gdm.enable = true;
-    xserver.desktopManager.gnome.enable = true;
-    gnome.core-apps.enable = false;
-    gnome.core-developer-tools.enable = false;
-    gnome.games.enable = false;
+    displayManager.sddm.enable = false;
+    displayManager.sddm.wayland.enable = false;
+
+    # KDE
+    desktopManager.plasma6.enable = true;
 
   };
 
-  #GNOME
-  environment.gnome.excludePackages = with pkgs; [ gnome-tour gnome-user-docs ];
+  # Exclude packages from DE
+  #KDE
+  environment.plasma6.excludePackages = with pkgs; [
+    kdePackages.elisa # Simple music player aiming to provide a nice experience for its users
+    kdePackages.kdepim-runtime # Akonadi agents and resources
+    kdePackages.kmahjongg # KMahjongg is a tile matching game for one or two players
+    kdePackages.kmines # KMines is the classic Minesweeper game
+    kdePackages.konversation # User-friendly and fully-featured IRC client
+    kdePackages.kpat # KPatience offers a selection of solitaire card games
+    kdePackages.ksudoku # KSudoku is a logic-based symbol placement puzzle
+    kdePackages.ktorrent # Powerful BitTorrent client
+    kdePackages.konsole
+    kdePackages.kate
+  ];
 
   # Console keymap
   console.keyMap = "de";
@@ -131,9 +144,6 @@ in
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
   
-  # Nix-ld 
-  programs.nix-ld.enable = true;
-
   # Fish
   programs.fish.enable = true;
 
@@ -142,18 +152,20 @@ in
     enable = true;
     package = myEmacs;
   };
-  
+ 
+  # Neovim
+  programs.neovim = {
+    enable = true;
+  };
   
   environment.systemPackages = with pkgs; [
     
     # CLI
+    lunarvim
     kitty # terminal
     zellij # multiplexer
-    helix # text editor
     btop # system-monitor
     ncdu # disk-usage
-
-    lazygit # git interface
     fzf # fuzzy-find
     fd # faster find
     yazi # file-manager
@@ -161,38 +173,27 @@ in
     zoxide # frecency commands
     carapace # argument suggestions
     
-    # coding
-    gcc
-    gnumake
-    cmake
-    libtool
-    pkg-config
-    libvterm
+    # essentials
     nodejs
     unzip
     wget
     curl
     git
-    
+
+    # coding
     typst
     quarto
     vscodium # manual setup
     myEmacs
 
     # latex
-    (texliveFull.withPackages
-      (ps: with ps; [
+    (texliveFull.withPackages (ps: with ps; [
         scheme-basic
         standalone
         varwidth
         scontents
         xcolor
     ]))
-    #poppler_utils # not sure if needed
-    #ghostscript # not sure if needed
-    #imagemagick # not sure if needed
-    #pdf2svg # not sure if needed
-
     
     # python
     (python3.withPackages (ps: with ps; [
@@ -202,11 +203,17 @@ in
       scipy
       pygame
       ipython
-    ]))
+    ])) # TODO: define myPy in let block
 
     # julia
-    julia-bin # manual package installation
+    #julia-bin # manual package installation
+    (julia.withPackages (ps: with ps; [
+      DataFrames
+      Turing
+      Gadfly
+    ]))
 
+    
     # R
     myR
     myRadian
@@ -218,14 +225,12 @@ in
 
     # media
     mpv
-    yt-dlp
     calibre
     zotero # manual extension installation
     libreoffice
     stremio
     pdfarranger
     xournalpp   
-    evince
  
     # files
     syncthing # manual setup
@@ -234,24 +239,17 @@ in
     # wayland
     wayland-utils # Wayland utilities
     wl-clipboard # Command-line copy/paste utilities for Wayland
-
-    #GNOME
-    gnome-system-monitor
-    nautilus
-    adwaita-icon-theme
     libwacom
     libinput
-    gnome-themes-extra
-    gnome-tweaks
-    gnomeExtensions.just-perfection
-    gnomeExtensions.caffeine
-    gnomeExtensions.blur-my-shell
-    gnomeExtensions.astra-monitor
 
+    #KDE
+    kdePackages.krohnkite
   ];
-
+  
+  environment.variables.PATH = "$HOME/.config/emacs/bin";
 
   environment.variables = {
+    
     QUARTO_R = "${myR}/bin/R";
     RETICULATE_PYTHON = "${pkgs.python3}/bin/python3";
 
@@ -266,22 +264,10 @@ in
     e = "emacsclient -nw ''";
     em = "emacsclient -c -a ''";
   };
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
 
   # EXPERIMENTAL
   nix.settings.experimental-features = [ "flakes" "nix-command" ];
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
 
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
