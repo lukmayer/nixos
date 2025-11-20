@@ -1,5 +1,4 @@
 # configuration.nix(5) man page / NixOS manual (accessible by running ‘nixos-help’).
-# TODO: reorganize for clarity
 { config, pkgs, lib, ... }:
 
 let
@@ -8,7 +7,7 @@ let
   # R packages
   commonRPackages = with pkgs.rPackages; [
     tidyverse BayesFactor brms lme4 lmerTest zoo readxl languageserver kableExtra emmeans rstatix
-    stringr DT this_path showtext cowplot patchwork reticulate pROC
+    stringr DT this_path showtext cowplot patchwork reticulate pROC MCMCpack rjags
   ];
 
   # R with packages
@@ -41,8 +40,7 @@ in
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.hostName = "nixos"; # Define your hostname.
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
+  networking.hostName = "nixos";
 
   # Networking
   networking.networkmanager.enable = true;
@@ -66,8 +64,8 @@ in
   };
 
   hardware.bluetooth = {
-    enable        = true;   # loads the kernel modules + bluetoothd
-    powerOnBoot   = true;   # turn the adapter on automatically
+    enable        = true;   
+    powerOnBoot   = true;   
   };
 
   services.xserver = {
@@ -76,7 +74,7 @@ in
     xkb.options = "grp:win_space_toggle";
   };
 
-  # Garbace collection
+  # Garbage collection
   nix.gc = {
     automatic = true;          
     dates     = "03:30 daily"; 
@@ -103,14 +101,14 @@ in
   # Exclude packages from DE
   #KDE
   environment.plasma6.excludePackages = with pkgs; [
-    kdePackages.elisa # Simple music player aiming to provide a nice experience for its users
-    kdePackages.kdepim-runtime # Akonadi agents and resources
-    kdePackages.kmahjongg # KMahjongg is a tile matching game for one or two players
-    kdePackages.kmines # KMines is the classic Minesweeper game
-    kdePackages.konversation # User-friendly and fully-featured IRC client
-    kdePackages.kpat # KPatience offers a selection of solitaire card games
-    kdePackages.ksudoku # KSudoku is a logic-based symbol placement puzzle
-    kdePackages.ktorrent # Powerful BitTorrent client
+    kdePackages.elisa 
+    kdePackages.kdepim-runtime 
+    kdePackages.kmahjongg 
+    kdePackages.kmines 
+    kdePackages.konversation 
+    kdePackages.kpat 
+    kdePackages.ksudoku 
+    kdePackages.ktorrent 
     kdePackages.konsole
     kdePackages.kate
   ];
@@ -126,7 +124,6 @@ in
     alsa.enable = true;
     alsa.support32Bit = true;
     pulse.enable = true;
-    #jack.enable = true;
   };
 
   # Users
@@ -136,14 +133,11 @@ in
     shell = pkgs.fish;
     description = "Lm";
     extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-    #  thunderbird
-    ];
   };
 
   # Allow unfree packages
   nixpkgs.config.allowUnfree = true;
-  
+
   # Fish
   programs.fish.enable = true;
 
@@ -157,19 +151,18 @@ in
   programs.neovim = {
     enable = true;
   };
+
+  # Fonts
+  fonts.packages = with pkgs; [
+    iosevka
+  ];
+
   
   environment.systemPackages = with pkgs; [
     
     # CLI
-    lunarvim
     kitty # terminal
     zellij # multiplexer
-    btop # system-monitor
-    ncdu # disk-usage
-    fzf # fuzzy-find
-    fd # faster find
-    yazi # file-manager
-    ripgrep # better grep
     zoxide # frecency commands
     carapace # argument suggestions
     
@@ -185,6 +178,7 @@ in
     quarto
     vscodium # manual setup
     myEmacs
+    (aspellWithDicts (dicts: with dicts; [ en en-computers en-science ]))
 
     # latex
     (texliveFull.withPackages (ps: with ps; [
@@ -197,22 +191,18 @@ in
     
     # python
     (python3.withPackages (ps: with ps; [
+      jupyter
       numpy
       pandas
       matplotlib
       scipy
       pygame
       ipython
+      python-lsp-server
     ])) # TODO: define myPy in let block
 
     # julia
-    #julia-bin # manual package installation
-    (julia.withPackages (ps: with ps; [
-      DataFrames
-      Turing
-      Gadfly
-    ]))
-
+    julia-bin # manual package installation
     
     # R
     myR
@@ -220,16 +210,17 @@ in
 
     # web
     vivaldi # manual configuration
+    librewolf
+    tor-browser
     protonvpn-gui # manually add to start-up
     protonmail-bridge-gui # manually add to start-up
-
+    
     # media
     mpv
     calibre
-    zotero # manual extension installation
+    zotero 
     libreoffice
     stremio
-    pdfarranger
     xournalpp   
  
     # files
@@ -237,13 +228,14 @@ in
     deja-dup
 
     # wayland
-    wayland-utils # Wayland utilities
-    wl-clipboard # Command-line copy/paste utilities for Wayland
+    wayland-utils 
+    wl-clipboard 
     libwacom
     libinput
 
     #KDE
     kdePackages.krohnkite
+    kde-rounded-corners
   ];
   
   environment.variables.PATH = "$HOME/.config/emacs/bin";
@@ -254,23 +246,16 @@ in
     RETICULATE_PYTHON = "${pkgs.python3}/bin/python3";
 
     EDITOR = "emacsclient -c -a ''";
-
-    # WIP - packages still not found during quarto render
-    QUARTO_JULIA = "${pkgs.julia-bin}/bin/julia";
-    QUARTO_JULIA_RUNTIME_DIR = "$HOME/.local/state/quarto-julia";
   };
   
-  environment.shellAliases = {
-    e = "emacsclient -nw ''";
-    em = "emacsclient -c -a ''";
-  };
-
   # EXPERIMENTAL
   nix.settings.experimental-features = [ "flakes" "nix-command" ];
-
 
   # Before changing this value read the documentation for this option
   # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
   system.stateVersion = "25.05"; # Did you read the comment?
 
 }
+
+
+
